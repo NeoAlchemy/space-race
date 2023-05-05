@@ -108,9 +108,9 @@ class Physics {
     }
     for (let wallCollisionEntry of this.wallCollisionRegister) {
       if (
-        wallCollisionEntry.objectA.y < wallCollisionEntry.objectA.height ||
+        wallCollisionEntry.objectA.y < 0 ||
         wallCollisionEntry.objectA.y > canvas.height ||
-        wallCollisionEntry.objectA.x < wallCollisionEntry.objectA.width ||
+        wallCollisionEntry.objectA.x < 0 ||
         wallCollisionEntry.objectA.x > canvas.width
       ) {
         wallCollisionEntry.callback.bind(wallCollisionEntry.scope).apply();
