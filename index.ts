@@ -1,190 +1,16 @@
+import {
+  canvas,
+  ctx,
+  GameObject,
+  Util,
+  Group,
+  InputController,
+  Scene,
+  Game,
+} from './pico-planet';
+
 // Import stylesheets
 import './style.css';
-
-/* -------------------------------------------------------------------------- */
-/*                                MINI FRAMEWORK.                             */
-/* -------------------------------------------------------------------------- */
-
-// boiler plate setup the canvas for the game
-var canvas = <HTMLCanvasElement>document.getElementById('canvas');
-var ctx = canvas.getContext('2d');
-canvas.setAttribute('tabindex', '1');
-canvas.style.outline = 'none';
-canvas.focus();
-
-// utility functions to use everywhere
-class Util {
-  static getRandomInt(min: number, max: number) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    // The maximum is inclusive and the minimum is inclusive
-    return Math.floor(Math.random() * (max - min + 1) + min);
-  }
-}
-
-// Input Controller to use everywhere
-class InputController {
-  public x: number;
-  public y: number;
-
-  constructor() {}
-
-  update(gameObject: GameObject) {}
-}
-
-class GameObject {
-  public x: number;
-  public y: number;
-  public width: number;
-  public height: number;
-
-  private inputController: InputController;
-
-  constructor(inputController?) {
-    this.inputController = inputController;
-  }
-
-  update() {
-    this.inputController?.update(this);
-  }
-
-  render() {}
-}
-
-class Physics {
-  private gameObjectCollisionRegister: Array<any> = [];
-  private wallCollisionRegister: Array<any> = [];
-  private objectA: GameObject;
-  private objectB: GameObject;
-
-  constructor() {}
-
-  onCollide(
-    objectA: GameObject,
-    objectB: GameObject,
-    callback: Function,
-    scope: any
-  ) {
-    if (objectA && objectB) {
-      this.gameObjectCollisionRegister.push({
-        objectA: objectA,
-        objectB: objectB,
-        callback: callback,
-        scope: scope,
-      });
-    }
-  }
-
-  onCollideWalls(objectA: GameObject, callback: Function, scope: any) {
-    if (objectA) {
-      this.wallCollisionRegister.push({
-        objectA: objectA,
-        callback: callback,
-        scope: scope,
-      });
-    }
-  }
-
-  update() {
-    for (let collisionEntry of this.gameObjectCollisionRegister) {
-      if (
-        collisionEntry.objectA.x > 0 &&
-        collisionEntry.objectA.x < canvas.width &&
-        collisionEntry.objectA.y > 0 &&
-        collisionEntry.objectA.y < canvas.height &&
-        collisionEntry.objectB.x > 0 &&
-        collisionEntry.objectB.x < canvas.width &&
-        collisionEntry.objectB.y > 0 &&
-        collisionEntry.objectB.y < canvas.height &&
-        collisionEntry.objectA.x <
-          collisionEntry.objectB.x + collisionEntry.objectB.width &&
-        collisionEntry.objectA.x + collisionEntry.objectA.width >
-          collisionEntry.objectB.x &&
-        collisionEntry.objectA.y <
-          collisionEntry.objectB.y + collisionEntry.objectB.height &&
-        collisionEntry.objectA.y + collisionEntry.objectA.height >
-          collisionEntry.objectB.y
-      ) {
-        collisionEntry.callback.apply(collisionEntry.scope, [
-          collisionEntry.objectA,
-          collisionEntry.objectB,
-        ]);
-      }
-    }
-    for (let wallCollisionEntry of this.wallCollisionRegister) {
-      if (
-        wallCollisionEntry.objectA.y < 0 ||
-        wallCollisionEntry.objectA.y + wallCollisionEntry.objectA.height >
-          canvas.height ||
-        wallCollisionEntry.objectA.x < 0 ||
-        wallCollisionEntry.objectA.x + wallCollisionEntry.objectA.width >
-          canvas.width
-      ) {
-        wallCollisionEntry.callback.bind(wallCollisionEntry.scope).apply();
-      }
-    }
-  }
-}
-
-class Scene {
-  public children: Array<any>;
-  public physics: Physics;
-
-  constructor() {
-    this.children = [];
-    this.physics = new Physics();
-  }
-
-  add(gameObject: GameObject) {
-    this.children.push(gameObject);
-  }
-
-  create() {}
-
-  update() {
-    for (let gameObject of this.children) {
-      gameObject.update();
-    }
-    this.physics.update();
-  }
-
-  render() {
-    // update the game background
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = COLOR_BACKGROUND;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    for (let gameObject of this.children) {
-      gameObject.render();
-    }
-  }
-}
-
-class Game {
-  private scene: Scene;
-  private id: number;
-
-  constructor(scene: Scene) {
-    this.scene = scene;
-    this.scene.create();
-    //Setup Components
-    this.id = requestAnimationFrame(this.gameLoop);
-  }
-
-  gameLoop(timestamp) {
-    // WARNING: This pattern is not using Times Step and as such
-    // Entities must be kept low, when needing multiple entities, scenes,
-    // or other components it's recommended to move to a Game Framework
-
-    // game lifecycle events
-    game.scene.update();
-    game.scene.render();
-
-    // call next frame
-    cancelAnimationFrame(game.id);
-    game.id = requestAnimationFrame(game.gameLoop);
-  }
-}
 
 /* -------------------------------------------------------------------------- */
 /*                               GAME SPECIFIC CODE                           */
@@ -193,27 +19,23 @@ class Game {
 /* ------------------------------ GAME MECHANICS ---------------------------- */
 
 const ASTEROID_SIZE = 5;
-const ASTEROID_COUNT = 25;
+const ASTEROID_COUNT = 35;
 const SHIP_VELOCITY = 8;
 const STAR_VELOCITY = 1;
 const CENTER_LINE_HEIGHT = -150;
 const CENTER_LINE_WIDTH = 10;
 const COLOR_CENTER_LINE = '#FFF';
-const COLOR_BACKGROUND = '#000';
 const COLOR_SCORE = '#FFF';
 const COLOR_ASTEROID = '#FFF';
 
 /* --------------------------------- ENTITIES ------------------------------- */
 
 class Asteroid extends GameObject {
-  public direction: string;
-
-  constructor(direction: string) {
+  constructor() {
     super();
     this.width = ASTEROID_SIZE;
     this.height = ASTEROID_SIZE;
-    this.direction = direction;
-    if (this.direction == 'RIGHT') {
+    if (this.command == 'RIGHT') {
       this.x = canvas.width - this.width;
     } else {
       this.x = 0;
@@ -223,7 +45,7 @@ class Asteroid extends GameObject {
   update() {
     super.update();
 
-    if (this.direction == 'RIGHT') {
+    if (this.command == 'RIGHT') {
       this.x = this.x - STAR_VELOCITY;
     } else {
       this.x = this.x + STAR_VELOCITY;
@@ -237,49 +59,43 @@ class Asteroid extends GameObject {
   }
 }
 
-class AsteroidField extends GameObject {
-  public storage: Array<Asteroid> = [];
-
+class AsteroidField extends Group {
   constructor() {
     super();
-    while (this.storage.length < ASTEROID_COUNT) {
+    while (this.children.length < ASTEROID_COUNT) {
       let randomY = Util.getRandomInt(canvas.height + CENTER_LINE_HEIGHT, 0);
       let randomX = Util.getRandomInt(0, canvas.width);
       let direction = Util.getRandomInt(0, 1) ? 'LEFT' : 'RIGHT';
-      let asteroid = new Asteroid(direction);
+      let asteroid = new Asteroid();
+      asteroid.command = direction;
       asteroid.y = randomY;
       asteroid.x = randomX;
-      this.storage.push(asteroid);
+      this.children.push(asteroid);
     }
   }
 
   update() {
     super.update();
-    if (this.storage.length < ASTEROID_COUNT) {
+    if (this.children.length < ASTEROID_COUNT) {
       let randomY = Util.getRandomInt(canvas.height + CENTER_LINE_HEIGHT, 0);
       let randomX = Util.getRandomInt(0, canvas.width);
       let direction = Util.getRandomInt(0, 1) ? 'LEFT' : 'RIGHT';
-      let asteroid = new Asteroid(direction);
+      let asteroid = new Asteroid();
+      asteroid.command = direction;
       asteroid.y = randomY;
       asteroid.x = direction == 'LEFT' ? 0 : canvas.width;
-      this.storage.push(asteroid);
+      this.children.push(asteroid);
     }
-    for (let i = 0; i < this.storage.length; i++) {
-      let asteroid: Asteroid = this.storage[i];
-      asteroid.update();
+    for (let i = 0; i < this.children.length; i++) {
+      let asteroid: Asteroid = this.children[i];
       if (this.isAsteroidOutOfBounds(asteroid)) {
-        this.storage.splice(i, 1);
+        this.children.splice(i, 1);
       }
     }
   }
 
   render() {
     super.render();
-
-    for (let i = 0; i < this.storage.length; i++) {
-      let asteroid: Asteroid = this.storage[i];
-      asteroid.render();
-    }
   }
 
   isAsteroidOutOfBounds(asteroid: Asteroid) {
@@ -322,6 +138,8 @@ class Ship extends GameObject {
       this.spaceshipSize,
       this.spaceshipSize
     );
+    //ctx.strokeStyle = '#0F0';
+    //ctx.strokeRect(this.x, this.y, this.width, this.height);
   }
 }
 
@@ -457,6 +275,18 @@ class MainLevel extends Scene {
 
     this.physics.onCollideWalls(this.leftShip, this.leftShipHitCeiling, this);
     this.physics.onCollideWalls(this.rightShip, this.rightShipHitCeiling, this);
+    this.physics.onCollide(
+      this.leftShip,
+      this.asteroidField,
+      this.leftShipHitAsteroid,
+      this
+    );
+    this.physics.onCollide(
+      this.rightShip,
+      this.asteroidField,
+      this.rightShipHitAsteroid,
+      this
+    );
   }
 
   update() {
@@ -485,6 +315,18 @@ class MainLevel extends Scene {
     this.score.incrementRight();
     this.rightShip.x = canvas.width - canvas.width / 4;
     this.rightShip.y = canvas.height - this.rightShip.height;
+  }
+
+  leftShipHitAsteroid() {
+    console.log('left ship hit');
+    this.leftShip = new Ship('LEFT');
+    this.add(this.leftShip);
+  }
+
+  rightShipHitAsteroid() {
+    console.log('right ship hit');
+    this.rightShip = new Ship('RIGHT');
+    this.add(this.rightShip);
   }
 }
 
